@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { ColorRing, ThreeDots } from "react-loader-spinner";
 import { BsCheckCircleFill, BsCloudDownload } from "react-icons/bs";
 
@@ -78,7 +78,10 @@ const Generate = () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ modelId, versionId }),
+      body: JSON.stringify({
+        modelId,
+        versionId,
+      }),
     });
 
     const data = await response.json();
@@ -110,8 +113,10 @@ const Generate = () => {
         setLoadingMessage("Your model is now ready to use.");
         break;
       }
+
       await new Promise((resolve) => setTimeout(resolve, 10000)); // wait for 10 seconds
     }
+
     setLoading(false);
   };
 
@@ -121,7 +126,10 @@ const Generate = () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ modelId, prompt }),
+      body: JSON.stringify({
+        prompt,
+        modelId,
+      }),
     });
 
     const data = await response.json();
@@ -133,6 +141,18 @@ const Generate = () => {
     return data.avatars;
   };
 
+  const handleImageClick = (type: Type) => {
+    if (selectedTypes.some((selectedType) => selectedType.src === type.src)) {
+      // Remove selected type from the list if it's already in there
+      setSelectedTypes(
+        selectedTypes.filter((selctedImage) => selctedImage.src !== type.src)
+      );
+    } else {
+      // Add selected type to the list
+      setSelectedTypes([...selectedTypes, type]);
+    }
+  };
+
   const handleGenerateAvatars = async () => {
     setIsGenerating(true);
 
@@ -140,21 +160,10 @@ const Generate = () => {
       const newAvatars = await generateAvatars(modelId as string, type.prompt);
       for (const avatar of newAvatars) {
         setGeneratedAvatars((prevAvatars) => [...prevAvatars, avatar]);
-        setIsGenerating(false);
       }
     }
-  };
 
-  const handleImageClick = (type: Type) => {
-    if (selectedTypes.some((selectedType) => selectedType.src === type.src)) {
-      // Remove selectedType from the list if it's already in there
-      setSelectedTypes(
-        selectedTypes.filter((selectedImage) => selectedImage.src !== type.src)
-      );
-    } else {
-      // Add selectedType to the list
-      setSelectedTypes([...selectedTypes, type]);
-    }
+    setIsGenerating(false);
   };
 
   const handleDownloadAll = async () => {
@@ -162,22 +171,20 @@ const Generate = () => {
     generatedAvatars.forEach((img) => {
       // Using CORS Server Proxy to avoid CORS error
       const imageURL = `https://cors-anywhere.herokuapp.com/${img}`;
-      fetch(img).then((response) =>
-        response
-          .blob()
-          .then((blob) => {
-            saveAs(blob, `${++counter}.jpg`);
-          })
-          .catch((err) => {
-            console.log(err);
-          })
-      );
+      fetch(imageURL)
+        .then((response) => response.blob())
+        .then((blob) => {
+          saveAs(blob, `${++counter}.jpg`);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
     });
   };
 
   useEffect(() => {
-    // console.log("modelId", modelId);
-    // console.log("versionId", versionId);
+    // console.log("modelId = ", modelId);
+    // console.log("versionId = ", versionId);
 
     if (modelId && versionId) {
       isTrained(modelId, versionId);
@@ -191,7 +198,7 @@ const Generate = () => {
       <section className="w-full mx-auto mb-12">
         <div className="text-center mb-10">
           <h1 className="font-semibold text-transparent text-5xl bg-gradient-to-r from-blue-500 to-indigo-400 inline-block bg-clip-text">
-            AI Avatar Generator
+            Avatar Generator
           </h1>
 
           {loading && (
@@ -210,7 +217,7 @@ const Generate = () => {
 
           {errorMessage && (
             <div className="text-red-600 text-xl text-bold mt-6">
-              {loadingMessage}
+              {errorMessage}
             </div>
           )}
 
@@ -247,7 +254,7 @@ const Generate = () => {
                 {type.title}
               </div>
               {selectedTypes.some(
-                (selectedImage) => selectedImage.src === type.src
+                (selectdImage) => selectdImage.src === type.src
               ) && (
                 <div className="absolute top-2 right-2">
                   <button className="absolute top-0 right-0 bg-yellow-500 text-black rounded-full">
@@ -288,8 +295,7 @@ const Generate = () => {
               onClick={handleDownloadAll}
               className="bg-transparent border-yellow-500 text-yellow-500 text-sm py-1 px-4 border rounded-md flex items-center justify-center"
             >
-              <BsCloudDownload className="w-4 h-4 mr-2" />
-              Download All
+              <BsCloudDownload className="w-4 h-4 mr-2" /> Download All
             </button>
           )}
         </div>
@@ -299,7 +305,6 @@ const Generate = () => {
             <a key={image} href={image} target="_blank">
               <img
                 src={image}
-                alt=""
                 className="w-full h-full object-cover rounded-md"
               />
             </a>
@@ -321,8 +326,9 @@ const Generate = () => {
   };
 
   return (
-    <div className="container max-w-2xl mx-auto my-10 px-4 ">
+    <div className="container max-w-2xl mx-auto my-10 px-4">
       {renderStatus()}
+
       {!loading && renderTypesGrid()}
 
       {(isGenerating || generatedAvatars.length > 0) &&
